@@ -1,0 +1,71 @@
+import random
+import numpy as np
+
+# Distance Matrix (5 nodes)
+# np.inf means there is NO direct road/edge between those two nodes
+inf = np.inf
+dist = np.array([
+    [0,   2,   2,   5,   inf],  # Node 0
+    [2,   0,   4,   inf, 2],    # Node 1
+    [2,   4,   0,   1,   3],    # Node 2
+    [5,   inf, 1,   0,   2],    # Node 3
+    [inf, 2,   3,   2,   0]     # Node 4
+], dtype=float)
+
+n_nodes = len(dist)
+phero = np.ones((n_nodes, n_nodes))  # Initialize pheromones
+alpha, beta, decay = 1.0, 2.0, 0.4   # ACO Hyperparameters
+
+# Define your exact Start and End points here
+START_NODE = 0
+END_NODE = 4
+
+best_path, best_dist = None, float('inf')
+
+for iteration in range(50):
+    all_paths = []
+    
+    for ant in range(15):
+        path = [START_NODE]
+        dead_end = False
+        
+        # Keep moving until the ant reaches the END_NODE
+        while path[-1] != END_NODE:
+            curr = path[-1]
+            
+            # Find neighbors that have a valid road and haven't been visited yet
+            unvisited = [i for i in range(n_nodes) if i not in path and dist[curr][i] != inf]
+            
+            # If an ant gets stuck with no unvisited neighbors, break out
+            if not unvisited:
+                dead_end = True
+                break
+                
+            # Calculate scores based on Pheromone and Closeness (1/Distance)
+            scores = [(phero[curr][u]**alpha) * ((1.0 / dist[curr][u])**beta) for u in unvisited]
+            
+            total = sum(scores)
+            probs = [s / total for s in scores]
+            
+            # Pick the next node based on probability
+            next_node = random.choices(unvisited, weights=probs)[0]
+            path.append(next_node)
+            
+        # Only evaluate paths that successfully reached the destination
+        if not dead_end:
+            d = sum(dist[path[i]][path[i+1]] for i in range(len(path)-1))
+            all_paths.append((path, d))
+            
+            if d < best_dist:
+                best_path, best_dist = path, d
+                
+    # Evaporate old pheromones
+    phero *= (1 - decay)
+    
+    # Reinforce pheromones only on successful paths found in this generation
+    for path, d in all_paths:
+        for i in range(len(path)-1):
+            phero[path[i]][path[i+1]] += 1.0 / d
+
+print(f"Shortest Path from {START_NODE} to {END_NODE}: {best_path}")
+print(f"Minimum Distance: {best_dist}")
